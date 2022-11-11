@@ -1,0 +1,572 @@
+--tables
+DROP TABLE Invoice;
+DROP TABLE OrgLocation;
+DROP TABLE Organization;
+DROP TABLE AmazonWishlist;
+DROP TABLE CreditCard;
+DROP TABLE DebitCard;
+DROP TABLE Location;
+DROP TABLE State;
+DROP TABLE PayPal;
+DROP TABLE Netbanking;
+DROP TABLE OnlinePayment;
+DROP TABLE Cash;
+DROP TABLE DonationChange;
+DROP TABLE Donation;
+DROP TABLE DonationLink;
+DROP TABLE Amazon;
+DROP TABLE Facebook;
+DROP TABLE Gmail;
+DROP TABLE SyncedAccount;
+DROP TABLE Account;
+
+
+CREATE TABLE Account(firstname VARCHAR(32), lastname VARCHAR(32), userID DECIMAL(12) PRIMARY KEY NOT NULL, password VARCHAR(32) NOT NULL, isBusiness CHAR(1) NOT NULL,
+isPersonal CHAR(1) NOT NULL, phoneNumber NUMBER(10), memberSince DATE);
+CREATE TABLE SyncedAccount(userID DECIMAL(12) NOT NULL, isFacebook CHAR(1), isGmail CHAR(1), isAmazon CHAR(1), FOREIGN KEY (userID) REFERENCES Account(userID));
+CREATE TABLE Gmail(username VARCHAR(32), password VARCHAR(32), userID DECIMAL(12) NOT NULL, FOREIGN KEY (userID) REFERENCES Account(userID));
+CREATE TABLE Facebook(username VARCHAR(32), password VARCHAR(32), userID DECIMAL(12) NOT NULL, FOREIGN KEY (userID) REFERENCES Account(userID));
+CREATE TABLE Amazon(username VARCHAR(32), password VARCHAR(32), userID DECIMAL(12) NOT NULL, FOREIGN KEY (userID) REFERENCES Account(userID));
+CREATE TABLE DonationLink(DonationLinkID DECIMAL(12) PRIMARY KEY NOT NULL, LinkDescription VARCHAR(255));
+CREATE TABLE Donation(DIN DECIMAL(12) PRIMARY KEY NOT NULL, userID DECIMAL(12) NOT NULL, isCash CHAR(1), isOnlinePayment CHAR(1), isAmazonWishlist CHAR(1), 
+amount DECIMAL(7,2), donationDate DATE, FOREIGN KEY (userID) REFERENCES Account(userID), DonationLinkID DECIMAL(12) NOT NULL, FOREIGN KEY (DonationLinkID) REFERENCES DonationLink(DonationLinkID));
+CREATE TABLE Cash(CashID DECIMAL(12) PRIMARY KEY NOT NULL, DIN NOT NULL, FOREIGN KEY(DIN) REFERENCES Donation(DIN));
+CREATE TABLE OnlinePayment(OnlinePaymentID DECIMAL(15) PRIMARY KEY NOT NULL, DIN NOT NULL, isCreditCard CHAR(1) NOT NULL, isDebitCard CHAR(1) NOT NULL, isPayPal CHAR(1) NOT NULL,
+isNetBanking CHAR(1) NOT NULL, FOREIGN KEY(DIN) REFERENCES Donation(DIN));
+CREATE TABLE State(StateID DECIMAL(12) PRIMARY KEY NOT NULL, StateName VARCHAR(32) UNIQUE NOT NULL);
+CREATE TABLE Location(LocationID DECIMAL(12) PRIMARY KEY NOT NULL, Line1 VARCHAR(150) NOT NULL, Line2 VARCHAR(150), City VARCHAR(64) NOT NULL, StateID DECIMAL(12) NOT NULL, PostalCode VARCHAR(32) NOT NULL,
+FOREIGN KEY (StateID) REFERENCES State(StateID));
+CREATE TABLE CreditCard(OnlinePaymentID DECIMAL(15) NOT NULL, CardNumber DECIMAL(16), CardholderName VARCHAR(32), LocationID DECIMAL(12), FOREIGN KEY (LocationID) REFERENCES Location(LocationID),
+FOREIGN KEY (OnlinePaymentID) REFERENCES OnlinePayment(OnlinePaymentID));
+CREATE TABLE DebitCard(OnlinePaymentID DECIMAL(15) NOT NULL, CardNumber DECIMAL(16), CardholderName VARCHAR(32), BillingAddress VARCHAR(32), LocationID DECIMAL(12), FOREIGN KEY (LocationID) REFERENCES Location(LocationID),
+FOREIGN KEY (OnlinePaymentID) REFERENCES OnlinePayment(OnlinePaymentID));
+CREATE TABLE PayPal(OnlinePaymentID DECIMAL(15) NOT NULL, Username VARCHAR(32), Password VARCHAR(32), FOREIGN KEY (OnlinePaymentID) REFERENCES OnlinePayment(OnlinePaymentID));
+CREATE TABLE NetBanking(OnlinePaymentID DECIMAL(15) NOT NULL, CustomerID DECIMAL(12) PRIMARY KEY NOT NULL, Password VARCHAR(32), FOREIGN KEY (OnlinePaymentID) REFERENCES OnlinePayment(OnlinePaymentID));
+CREATE TABLE AmazonWishlist(AmazonWishlistID DECIMAL(12) NOT NULL, DIN NOT NULL, FOREIGN KEY(DIN) REFERENCES Donation(DIN));
+CREATE TABLE Organization(OrganizationID DECIMAL(15) PRIMARY KEY NOT NULL, OrganizationName VARCHAR(64) NOT NULL, OrganizationType VARCHAR(150) NOT NULL,
+FoundedDate DATE, DIN DECIMAL(12), FOREIGN KEY (DIN) REFERENCES Donation(DIN));
+CREATE TABLE OrgLocation(OrganizationID DECIMAL(15), LocationID DECIMAL(12), FOREIGN KEY (LocationID) REFERENCES Location(LocationID), FOREIGN KEY (OrganizationID) REFERENCES Organization(OrganizationID));
+CREATE TABLE Invoice(InvoiceID DECIMAL(15) PRIMARY KEY NOT NULL, DIN NOT NULL, invoiceDate DATE NOT NULL, amount DECIMAL(7,2), FOREIGN KEY(DIN) REFERENCES Donation(DIN));
+
+--sequences
+DROP SEQUENCE Invoice_seq;
+DROP SEQUENCE Organization_seq;
+DROP SEQUENCE Location_seq;
+DROP SEQUENCE AmazonWishlist_seq;
+DROP SEQUENCE OnlinePayment_seq;
+DROP SEQUENCE NetBanking_seq;
+DROP SEQUENCE State_seq;
+DROP SEQUENCE Cash_seq;
+DROP SEQUENCE Donation_seq;
+DROP SEQUENCE DonationLink_seq;
+DROP SEQUENCE Account_seq;
+
+CREATE SEQUENCE Account_seq START WITH 10;
+CREATE SEQUENCE DonationLink_seq START WITH 1;
+CREATE SEQUENCE Donation_seq START WITH 10;
+CREATE SEQUENCE Cash_seq START WITH 10;
+CREATE SEQUENCE OnlinePayment_seq START WITH 10;
+CREATE SEQUENCE State_seq START WITH 1;
+CREATE SEQUENCE NetBanking_seq START WITH 10000;
+CREATE SEQUENCE AmazonWishlist_seq START WITH 10;
+CREATE SEQUENCE Location_seq START WITH 100;
+CREATE SEQUENCE Organization_seq START WITH 1;
+CREATE SEQUENCE Invoice_seq START WITH 1;
+
+--indexes
+/*CREATE INDEX Account_phone_idx ON Account(phoneNumber);
+CREATE INDEX SyncedAccount_userID_idx ON SyncedAccount(userID);
+CREATE INDEX Gmail_username_idx ON Gmail(username);
+CREATE INDEX FB_username_idx ON Facebook(username);
+CREATE INDEX Amazon_username_idx ON Amazon(username);
+CREATE UNIQUE INDEX Credit_cardno_idx ON CreditCard(cardnumber);
+CREATE UNIQUE INDEX Debit_cardno_idx ON DebitCard(cardnumber);
+CREATE INDEX City_idx ON Location(city);
+CREATE UNIQUE INDEX DIN_Invoice_idx ON Invoice(DIN);*/
+
+--populating the tables
+INSERT INTO Account(firstname, lastname, userID, password, isBusiness, isPersonal, phoneNumber, memberSince)
+VALUES('Matt', 'Damon', Account_seq.nextval, 'mdmdmd123', 'N', 'Y', 8796667775, CAST('01-SEP-2017' AS DATE));
+INSERT INTO SyncedAccount(userID, isFacebook, isGmail, isAmazon)
+VALUES(Account_seq.currval, 'N','N','Y');
+INSERT INTO Amazon(username, password, userID)
+VALUES('mdamon@gmail.com', '88julkiji.', Account_seq.currval);
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, 'We are grateful for all your gifts, in whatever amounts, from members, friends, well-wishers and partners.');
+INSERT INTO Donation(DIN, userID, isCash, isOnlinePayment, isAmazonWishlist, amount, donationDate, DonationLinkID)
+VALUES(Donation_seq.nextval, Account_seq.currval, 'Y', 'N', 'N', 200, CAST('09-SEP-2017' AS DATE), DonationLink_seq.currval);
+INSERT INTO Cash(CashID, DIN)
+VALUES(Cash_seq.nextval, Donation_seq.currval);
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Oregon');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '131 N Vancouver Ave', null,'Portland', State_seq.currval, 97227);
+INSERT INTO Organization(OrganizationID, OrganizationName,  OrganizationType, FoundedDate, DIN)
+VALUES(Organization_seq.nextval, 'American Red Cross', 'Humanitarian', CAST('07-OCT-1901' AS DATE), Donation_seq.currval);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES(Organization_seq.currval, Location_seq.currval);
+
+INSERT INTO Account(firstname, lastname, userID, password, isBusiness, isPersonal, phoneNumber, memberSince)
+VALUES('Debra', 'Watts', Account_seq.nextval, '1234$$$','N', 'Y', 6126653335, CAST('19-AUG-2020'AS DATE));
+INSERT INTO SyncedAccount(userID, isFacebook, isGmail, isAmazon)
+VALUES(Account_seq.currval, 'Y','Y','Y');
+INSERT INTO Gmail(username, password, userID)
+VALUES('debrawatts19@gmail.com', 'dejbjebj', Account_seq.currval);
+INSERT INTO Facebook(username, password, userID)
+VALUES('Debra M Watts', 'debjkdak22', Account_seq.currval);
+INSERT INTO Amazon(username, password, userID)
+VALUES('debrawatts@gmail.com', 'debjkdak22', Account_seq.currval);
+
+INSERT INTO Account(firstname, lastname, userID, password, isBusiness, isPersonal, phoneNumber, memberSince)
+VALUES('Amelia', 'Morgan', Account_seq.nextval, 'frengmn', 'N', 'Y', 2324467775, CAST('11-JAN-2019' AS DATE));
+INSERT INTO SyncedAccount(userID, isFacebook, isGmail, isAmazon)
+VALUES(Account_seq.currval, 'Y','N','Y');
+INSERT INTO Facebook(username, password, userID)
+VALUES('Amelia Morgan', '22bjbjb.', Account_seq.currval);
+INSERT INTO Amazon(username, password, userID)
+VALUES('ameliamorgan@yahoo.com', 'july123.', Account_seq.currval);
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, null);
+INSERT INTO Donation(DIN, userID, isCash, isOnlinePayment, isAmazonWishlist, amount, donationDate, DonationLinkID)
+VALUES(Donation_seq.nextval, Account_seq.currval, 'N', 'N', 'Y', 34.50, CAST('19-DEC-2019' AS DATE), DonationLink_seq.currval);
+INSERT INTO AmazonWishlist(AmazonWishlistID, DIN)
+VALUES(AmazonWishlist_seq.nextval, Donation_seq.currval);
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'North Carolina');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '01 Bamboo Rd', null, 'Boone', State_seq.currval, 28607);
+INSERT INTO Organization(OrganizationID, OrganizationName,  OrganizationType, FoundedDate, DIN)
+VALUES(Organization_seq.nextval, 'Samaritans Purse', 'Religious ', CAST('07-OCT-1901' AS DATE), Donation_seq.currval);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES(Organization_seq.currval, Location_seq.currval);
+
+INSERT INTO Account(firstname, lastname, userID, password, isBusiness, isPersonal, phoneNumber, memberSince)
+VALUES('Matt', 'Spark', Account_seq.nextval, 'mspaklf22', 'N', 'Y', 6129869855, CAST('02-APR-2019' AS DATE));
+INSERT INTO SyncedAccount(userID, isFacebook, isGmail, isAmazon)
+VALUES(Account_seq.currval, 'Y','Y','Y');
+INSERT INTO Gmail(username, password, userID)
+VALUES('mspark@gmail.com', 'fewawdf232', Account_seq.currval);
+INSERT INTO Facebook(username, password, userID)
+VALUES('Matt Spark', '55vhgv.', Account_seq.currval);
+INSERT INTO Amazon(username, password, userID)
+VALUES('mspark@gmail.com', 'august,,mmm', Account_seq.currval);
+
+INSERT INTO Account(firstname, lastname, userID, password, isBusiness, isPersonal, phoneNumber, memberSince)
+VALUES('Jeffrey', 'Archer', Account_seq.nextval, 'jhkjdjkf','N', 'Y', 8292227235, CAST('11-APR-2019' AS DATE));
+INSERT INTO SyncedAccount(userID, isFacebook, isGmail, isAmazon)
+VALUES(Account_seq.currval, 'N','N','N');
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, NULL);
+INSERT INTO Donation(DIN, userID, isCash, isOnlinePayment, isAmazonWishlist, amount, donationDate, DonationLinkID)
+VALUES(Donation_seq.nextval, Account_seq.currval, 'N', 'Y', 'N', 3000, CAST('02-AUG-2020' AS DATE), DonationLink_seq.currval);
+INSERT INTO OnlinePayment(OnlinePaymentID, DIN, isCreditCard, isDebitCard, isPayPal, isNetBanking)
+VALUES(OnlinePayment_seq.nextval, Donation_seq.currval, 'N', 'N', 'Y', 'N');
+INSERT INTO PayPal(OnlinePaymentID, Username, Password)
+VALUES(OnlinePayment_seq.currval, 'jeffarch@gmail.com', 'herlnmn...');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Massachusetts');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '200 Hillside Cir',null, 'Springfield', State_seq.currval, 01809);
+INSERT INTO Organization(OrganizationID, OrganizationName,  OrganizationType, FoundedDate, DIN)
+VALUES(Organization_seq.nextval, 'Mercy Life', 'Religious Foundation', CAST('21-DEC-1980' AS DATE), Donation_seq.currval);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES(Organization_seq.currval, Location_seq.currval);
+
+INSERT INTO Account(firstname, lastname, userID, password, isBusiness, isPersonal, phoneNumber, memberSince)
+VALUES('Jim', 'Gates', Account_seq.nextval, 'jimfenvne', 'Y', 'N', 4123453456, CAST('4-MAY-2017' AS DATE));
+INSERT INTO SyncedAccount(userID, isFacebook, isGmail, isAmazon)
+VALUES(Account_seq.currval, 'N','N','N');
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, 'Your tax-deductible donation will help fight cruelty and make a life-changing difference for animals across America.');
+INSERT INTO Donation(DIN, userID, isCash, isOnlinePayment, isAmazonWishlist, amount, donationDate, DonationLinkID)
+VALUES(Donation_seq.nextval, Account_seq.currval, 'Y', 'N', 'N', 2300, CAST('29-MAY-2017' AS DATE), DonationLink_seq.currval);
+INSERT INTO Cash(CashID, DIN)
+VALUES(Cash_seq.nextval, Donation_seq.currval);
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Arizona');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '48 S Lake Powell Blvd',null,'Page', State_seq.currval, 86040);
+INSERT INTO Organization(OrganizationID, OrganizationName,  OrganizationType, FoundedDate, DIN)
+VALUES(Organization_seq.nextval, 'Page Lake Powell Chamber of Commerce', 'Community service', CAST('11-JAN-2001' AS DATE), Donation_seq.currval);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES(Organization_seq.currval, Location_seq.currval);
+INSERT INTO Account(firstname, lastname, userID, password, isBusiness, isPersonal, phoneNumber, memberSince)
+VALUES('Audrey', 'Damon', Account_seq.nextval, 'hilalkdj122', 'Y', 'N', 8796667775, CAST('15-JUN-2021' AS DATE));
+INSERT INTO SyncedAccount(userID, isFacebook, isGmail, isAmazon)
+VALUES(Account_seq.currval, 'N','N','Y');
+INSERT INTO Amazon(username, password, userID)
+VALUES('audrey1020@yahoo.com', 'hajlj,mm', Account_seq.currval);
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, 'We are grateful for all your gifts, in whatever amounts, from members, friends, well-wishers and partners.');
+INSERT INTO Donation(DIN, userID, isCash, isOnlinePayment, isAmazonWishlist, amount, donationDate, DonationLinkID)
+VALUES(Donation_seq.nextval, Account_seq.currval, 'N', 'Y', 'N', 1300, CAST('20-AUG-2021' AS DATE), DonationLink_seq.currval);
+INSERT INTO OnlinePayment(OnlinePaymentID, DIN, isCreditCard, isDebitCard, isPayPal, isNetBanking)
+VALUES(OnlinePayment_seq.nextval, Donation_seq.currval, 'N', 'N', 'Y', 'N');
+INSERT INTO PayPal(OnlinePaymentID, Username, Password)
+VALUES(OnlinePayment_seq.currval, 'audrey1020@yahoo.com', 'kj...9090');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'New Jersey');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '4910 A St', null, 'Newark', State_seq.currval, 07102);
+INSERT INTO Organization(OrganizationID, OrganizationName,  OrganizationType, FoundedDate, DIN)
+VALUES(Organization_seq.nextval, 'Newark Trust for Education', 'Educational', CAST('12-MAR-1999' AS DATE), Donation_seq.currval);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES(Organization_seq.currval, Location_seq.currval);
+
+INSERT INTO Account(firstname, lastname, userID, password, isBusiness, isPersonal, phoneNumber, memberSince)
+VALUES('Betty', 'Johnson', Account_seq.nextval, 'betegugfhv333', 'Y', 'N', 8796667775, CAST('16-MAY-2018' AS DATE));
+INSERT INTO SyncedAccount(userID, isFacebook, isGmail, isAmazon)
+VALUES(Account_seq.currval, 'N','N','Y');
+INSERT INTO Amazon(username, password, userID)
+VALUES('mailbetty@gmail.com', 'jullmmn.', Account_seq.currval);
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, NULL);
+INSERT INTO Donation(DIN, userID, isCash, isOnlinePayment, isAmazonWishlist, amount, donationDate, DonationLinkID)
+VALUES(Donation_seq.nextval, Account_seq.currval, 'N', 'Y', 'N', 50, CAST('20-AUG-2021' AS DATE), DonationLink_seq.currval);
+INSERT INTO OnlinePayment(OnlinePaymentID, DIN, isCreditCard, isDebitCard, isPayPal, isNetBanking)
+VALUES(OnlinePayment_seq.nextval, Donation_seq.currval, 'Y', 'N', 'N', 'N');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Washington');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '11011 120th Ave NE', null, 'Kirkland', State_seq.currval, 98033);
+INSERT INTO CreditCard(OnlinePaymentID, CardNumber, CardholderName, LocationID)
+VALUES(OnlinePayment_seq.currval, 2011000223381111, 'Betty H Johnson', Location_seq.currval);
+INSERT INTO Organization(OrganizationID, OrganizationName,  OrganizationType, FoundedDate, DIN)
+VALUES(Organization_seq.nextval, 'Hopelink', 'Animal Rescue', CAST('04-FEB-1975' AS DATE), Donation_seq.currval);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES(Organization_seq.currval, Location_seq.currval);
+
+INSERT INTO Account(firstname, lastname, userID, password, isBusiness, isPersonal, phoneNumber, memberSince)
+VALUES('Pamela', 'Zinc', Account_seq.nextval, 'jkhkhkjhkjh', 'Y', 'N', 6191117221, CAST('25-NOV-2020' AS DATE));
+INSERT INTO SyncedAccount(userID, isFacebook, isGmail, isAmazon)
+VALUES(Account_seq.currval, 'N','Y','Y');
+INSERT INTO Gmail(username, password, userID)
+VALUES('pamzinc@gmail.com', 'yinfnjhekhfk', Account_seq.currval);
+INSERT INTO Facebook(username, password, userID)
+VALUES('Pamela Zinc Winger', 'wingd33300.', Account_seq.currval);
+INSERT INTO Amazon(username, password, userID)
+VALUES('pamzinc@gmail.com', 'zinjbj223.', Account_seq.currval);
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '213212 SE Eastgate Way', null, 'Bellevue', (SELECT StateID FROM State WHERE StateName = 'Washington'), 98005);
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, NULL);
+INSERT INTO Donation(DIN, userID, isCash, isOnlinePayment, isAmazonWishlist, amount, donationDate, DonationLinkID)
+VALUES(Donation_seq.nextval, Account_seq.currval, 'N', 'Y', 'N', 880, CAST('02-MAY-2021' AS DATE), DonationLink_seq.currval);
+INSERT INTO Organization(OrganizationID, OrganizationName, OrganizationType, FoundedDate, DIN)
+VALUES(Organization_seq.nextval, 'Seattle Humane Society', 'Animal Rescue', CAST('01-APR-1970' AS DATE), Donation_seq.currval);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES(Organization_seq.currval, Location_seq.currval);
+INSERT INTO OnlinePayment(OnlinePaymentID, DIN, isCreditCard, isDebitCard, isPayPal, isNetBanking)
+VALUES(OnlinePayment_seq.nextval, Donation_seq.currval, 'N', 'Y', 'N', 'N');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '25 Alrbt st', null, 'Woodinville', State_seq.currval, 98035);
+INSERT INTO DebitCard(OnlinePaymentID, CardNumber, CardholderName, LocationID)
+VALUES(OnlinePayment_seq.currval, 9823192923386534, 'Betty H Johnson', Location_seq.currval);
+--Pam's 2nd donation
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Nebraska');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '4430 S 33rd St', null, 'Omaha', State_seq.currval, 68107);
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, NULL);
+INSERT INTO Donation(DIN, userID, isCash, isOnlinePayment, isAmazonWishlist, amount, donationDate, DonationLinkID)
+VALUES(Donation_seq.nextval, Account_seq.currval, 'N', 'Y', 'N', 75, CAST('10-DEC-2020' AS DATE), DonationLink_seq.currval);
+INSERT INTO Organization(OrganizationID, OrganizationName,  OrganizationType, FoundedDate, DIN)
+VALUES(Organization_seq.nextval, 'Catholic Charities', 'Religious', CAST('20-MAY-2000' AS DATE), Donation_seq.currval);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES(Organization_seq.currval, Location_seq.currval);
+INSERT INTO OnlinePayment(OnlinePaymentID, DIN, isCreditCard, isDebitCard, isPayPal, isNetBanking)
+VALUES(OnlinePayment_seq.nextval, Donation_seq.currval, 'N', 'Y', 'N', 'N');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '25 Alrbt st', null, 'Woodinville', (SELECT StateID From State WHERE StateName = 'Washington'), 98035);
+INSERT INTO DebitCard(OnlinePaymentID, CardNumber, CardholderName, LocationID)
+VALUES(OnlinePayment_seq.currval, 9823192923386534, 'Betty H Johnson', Location_seq.currval);
+
+INSERT INTO Account(firstname, lastname, userID, password, isBusiness, isPersonal, phoneNumber, memberSince)
+VALUES('Zach', 'Reynolds', Account_seq.nextval, 'rey24619$$', 'Y', 'N', 4116612334, CAST('29-MAR-2020' AS DATE));
+INSERT INTO SyncedAccount(userID, isFacebook, isGmail, isAmazon)
+VALUES(Account_seq.currval, 'N','Y','N');
+INSERT INTO Gmail(username, password, userID)
+VALUES('zachr1999@gmail.com', '1290bbbe23.', Account_seq.currval);
+INSERT INTO Facebook(username, password, userID)
+VALUES('Zach Rey', 'gihkn44.', Account_seq.currval);
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Connecticut');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '185 Main St #2296', null, 'New Britain', State_seq.currval, 06051);
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, '100% of your donation goes to community-based non-profits.');
+INSERT INTO Donation(DIN, userID, isCash, isOnlinePayment, isAmazonWishlist, amount, donationDate, DonationLinkID)
+VALUES(Donation_seq.nextval, Account_seq.currval, 'N', 'Y', 'N', 15, CAST('10-NOV-2020' AS DATE), DonationLink_seq.currval);
+INSERT INTO OnlinePayment(OnlinePaymentID, DIN, isCreditCard, isDebitCard, isPayPal, isNetBanking)
+VALUES(OnlinePayment_seq.nextval, Donation_seq.currval, 'N', 'N', 'N', 'Y');
+INSERT INTO NetBanking(OnlinePaymentID, customerID, password)
+VALUES(OnlinePayment_seq.currval, NetBanking_seq.nextval, 'beronf123$');
+INSERT INTO Organization(OrganizationID, OrganizationName,  OrganizationType, FoundedDate, DIN)
+VALUES(Organization_seq.nextval, 'American Savings Foundation', 'Educational', CAST('12-MAR-1999' AS DATE), Donation_seq.currval);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES(Organization_seq.currval, Location_seq.currval);
+
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, 'Create a better tomorrow for vulnerable wildlife and their habitats around the world. Be a hero for nature and protect our beautiful planet today.');
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, NULL);
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, 'With your contribution, thousands of youth, adults, and seniors in New Hampshire can receive the support they need to grow from the unique challenges of vision loss and blindness.');
+INSERT INTO DonationLink(DonationLinkID, LinkDescription)
+VALUES(DonationLink_seq.nextval, NULL);
+
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'California');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '1922 The Alameda UNIT 302', null, 'San Jose', State_seq.currval, 95126);
+INSERT INTO Organization(OrganizationID, OrganizationName,  OrganizationType, FoundedDate, DIN)
+VALUES(Organization_seq.nextval, 'Fistula Foundation', 'Public charity', CAST('23-NOV-1991' AS DATE), null);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES(Organization_seq.currval, Location_seq.currval);
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Nevada');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '1065 American Pacific Dr 160', null, 'Henderson', State_seq.currval, 89074);
+INSERT INTO Organization(OrganizationID, OrganizationName,  OrganizationType, FoundedDate, DIN)
+VALUES(Organization_seq.nextval, 'Spread the Word', 'Public charity', CAST('23-JAN-2011' AS DATE), null);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES(Organization_seq.currval, Location_seq.currval);
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Florida');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '335 SW 27th Ave', null, 'Miami', State_seq.currval, 33135);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES ((SELECT OrganizationID FROM Organization where OrganizationName = 'American Red Cross'), Location_seq.currval);
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Alaska');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '851 Westpoint Dr', null, 'Wasilla', State_seq.currval, 99654);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES ((SELECT OrganizationID FROM Organization where OrganizationName = 'American Red Cross'), Location_seq.currval);
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Georgia');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '1955 Monroe Dr NE', null, 'Atlanta', State_seq.currval, 30324);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES ((SELECT OrganizationID FROM Organization where OrganizationName = 'American Red Cross'), Location_seq.currval);
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Delaware');
+INSERT INTO Location(LocationID, Line1, Line2, City, StateID, PostalCode)
+VALUES(Location_seq.nextval, '2099 S Dupont Hwy A', null, 'Dover', State_seq.currval, 19901);
+INSERT INTO OrgLocation(OrganizationID, LocationID)
+VALUES((SELECT OrganizationID FROM Organization WHERE OrganizationName = 'Catholic Charities'), Location_seq.currval);
+
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Alabama');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Arkansas');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Colorado');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Utah');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Idaho');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Montana');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Wyoming');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'New Mexico');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Kansas');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Texas');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Oklahoma');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'South Dakota');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'North Dakota');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Iowa');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Minnesota');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Missouri');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Louisiana');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Mississippi');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Kentucky');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Tennessee');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Wisconsin');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Illinois');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Indiana');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Ohio');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Michigan');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'South Carolina');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Hawaii');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Maine');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Pennsylvania');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'New Hampshire');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'New York');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Vermont');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Maryland');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'Rhode Island');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'West Virginia');
+INSERT INTO State(StateID, StateName)
+VALUES(State_seq.nextval, 'District of Columbia');
+--Stored Procedures
+--STORED PROCEDURE for the Account table
+CREATE OR REPLACE PROCEDURE add_user(firstname IN VARCHAR, lastname IN VARCHAR, userID IN DECIMAL, password IN VARCHAR, isBusiness IN CHAR,
+isPersonal IN CHAR, phoneNumber IN NUMBER, memberSince IN DATE)
+AS
+BEGIN
+     INSERT INTO Account(firstname, lastname, userID, password, isBusiness,isPersonal, phoneNumber, memberSince)
+     VALUES(firstname, lastname, userID, password, isBusiness,isPersonal, phoneNumber, memberSince);
+END;
+BEGIN
+    add_user('Nicole', 'Jones', Account_seq.nextval, 'helknkn12', 'N', 'Y', 8776654323, CAST('14-FEB-2020' AS DATE));
+COMMIT;
+END;
+SELECT * FROM Account;
+--STORED PROCEDURE for the Invoice table
+CREATE OR REPLACE PROCEDURE generate_invoice(invoiceID IN DECIMAL, DIN IN DECIMAL, invoiceDate IN DATE, amount in DECIMAL)
+AS
+BEGIN
+ INSERT INTO Invoice(invoiceID, DIN, invoiceDate, amount)
+ VALUES(invoiceID, DIN, invoiceDate, amount);
+END;
+
+BEGIN
+FOR donor IN (
+SELECT DIN, donationDate, amount
+FROM Donation
+)
+LOOP
+generate_invoice(Invoice_seq.nextval, donor.DIN, donor.donationDate, donor.amount);
+END LOOP;
+COMMIT;
+END;
+
+--queries
+--1
+SELECT Organization.OrganizationName, Count(State.StateID)
+FROM Organization
+JOIN OrgLocation ON OrgLocation.OrganizationID = Organization.OrganizationID
+JOIN Location ON OrgLocation.LocationID = Location.LocationID
+JOIN State ON Location.StateID = State.StateID
+GROUP BY Organization.OrganizationName
+HAVING Count(State.StateID) > 1;
+
+--2
+SELECT firstname, lastname, Gmail.username
+FROM Account
+JOIN Gmail ON Account.userID = Gmail.userID
+WHERE isPersonal = 'Y' AND Account.userID  IN (SELECT userID FROM SyncedAccount
+                        WHERE isGmail = 'Y');
+                        
+--3
+CREATE OR REPLACE VIEW user_since AS
+SELECT
+    Account.userID,
+    firstname || ' ' || lastname fullname,
+    FLOOR(months_between(CURRENT_DATE, memberSince)/ 12 ) as years
+FROM
+    Account
+JOIN Donation ON Account.userID = Donation.userID
+WHERE isCash = 'Y' OR isOnlinePayment = 'Y'
+ORDER BY Account.firstname;
+
+SELECT Account.userID, to_char(MAX(donation.amount), 'FML99999.00', 'NLS_CURRENCY = $') AS highest_amount, 
+(SELECT COUNT(StateID) FROM State) AS can_donate_to_states
+FROM user_since
+LEFT JOIN Account ON user_since.userID = Account.userID
+JOIN Donation ON Account.userID = Donation.userID
+GROUP BY Account.userID
+HAVING MAX(donation.amount) > 300;
+select * from donation;
+
+--HISTORY TABLE
+CREATE TABLE DonationChange(DIN DECIMAL(12) PRIMARY KEY NOT NULL, userID DECIMAL(12) NOT NULL, OldAmount DECIMAL(7,2) NOT NULL, 
+NewAmount DECIMAL(7,2) NOT NULL, changeDate DATE NOT NULL, FOREIGN KEY (userID) REFERENCES Account(userID), DonationLinkID DECIMAL(12) NOT NULL, 
+FOREIGN KEY (DonationLinkID) REFERENCES DonationLink(DonationLinkID));
+CREATE OR REPLACE TRIGGER DonationChangeTrigger
+BEFORE UPDATE OF amount ON Donation
+FOR EACH ROW
+BEGIN
+ INSERT INTO DonationChange(DIN, userID, OldAmount, NewAmount, changeDate, DonationLinkID)
+ VALUES(:NEW.DIN,
+ :NEW.userID,
+ :OLD.amount,
+ :NEW.amount,
+ trunc(sysdate),
+ :New.DonationLinkID);
+END;
+
+UPDATE Donation
+SET amount = 70
+WHERE userID IN (SELECT Account.userId FROM Account
+JOIN Donation on Donation.userID = Account.userID
+WHERE firstname = 'Betty' AND lastname = 'Johnson');
+
+UPDATE Donation
+SET amount = 220
+WHERE userID IN (SELECT Account.userId FROM Account
+JOIN Donation on Donation.userID = Account.userID
+WHERE firstname = 'Jeffrey' AND lastname = 'Archer');
+
+UPDATE Donation
+SET amount = 1200
+WHERE userID IN (SELECT Account.userId FROM Account
+JOIN Donation on Donation.userID = Account.userID
+WHERE firstname = 'Audrey' AND lastname = 'Damon');
+
+UPDATE Donation
+SET amount = 3500
+WHERE userID IN (SELECT Account.userId FROM Account
+JOIN Donation on Donation.userID = Account.userID
+WHERE firstname = 'Matt' AND lastname = 'Damon');
+
+UPDATE Donation
+SET amount = 5000
+WHERE userID IN (SELECT Account.userId FROM Account
+JOIN Donation on Donation.userID = Account.userID
+WHERE firstname = 'Jim' AND lastname = 'Gates');
+
+SELECT * FROM DonationChange;
+
+--data visualization 1
+SELECT Organization.OrganizationName, Count(State.StateID)
+FROM Organization
+JOIN OrgLocation ON OrgLocation.OrganizationID = Organization.OrganizationID
+JOIN Location ON OrgLocation.LocationID = Location.LocationID
+JOIN State ON Location.StateID = State.StateID
+GROUP BY Organization.OrganizationName
+HAVING Count(State.StateID) > 0;
+
+--data visualization 2 - how many users joined in each year
+SELECT
+  EXTRACT(year FROM memberSince) AS year,
+  COUNT(userID) AS no_of_users
+FROM Account
+GROUP BY EXTRACT(year FROM memberSince);
+--extra - donations by year
+SELECT
+  EXTRACT(year FROM donationDate) AS year,
+  SUM(amount) AS money
+FROM Donation
+GROUP BY EXTRACT(year FROM donationDate);
